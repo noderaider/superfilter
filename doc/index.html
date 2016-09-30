@@ -60,10 +60,10 @@ const data = (
               , 2
               , { coo: &apos;car&apos;
                 , __type__: &apos;something&apos;
-                } 
+                }
               ]
             )
-          } 
+          }
         )
       }
     )
@@ -80,10 +80,35 @@ print(superfilter(data, `x =&gt; Object.keys(x).includes(&apos;foo&apos;)`)
 </code></pre>
 <h3 id="options">Options</h3>
 <p>The third parameter an options object to tweak how you filter:</p>
-<p>optionName    | type                          | description
-==========    | ====                          | ===========
-<code>filterKeys</code>  | <code>undefined</code> | <code>Array&lt;string&gt;</code> | Only keys supplied will be used in filtering values. (<code>undefined</code> =&gt; filter on all keys)
-<code>walkKeys</code>    | <code>undefined</code> | <code>Array&lt;string&gt;</code> | Only keys supplied will be used in recursive traversal. (<code>undefined</code> =&gt; walk all paths)</p>
+<table>
+<thead>
+<tr>
+<th>optionName</th>
+<th style="text-align:center">type</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>filterKeys</code></td>
+<td style="text-align:center"><code>undefined</code></td>
+<td><code>Array&lt;string&gt;</code></td>
+<td>Only keys supplied will be used in filtering values. (<code>undefined</code> =&gt; filter on all keys)</td>
+</tr>
+<tr>
+<td><code>walkKeys</code></td>
+<td style="text-align:center"><code>undefined</code></td>
+<td><code>Array&lt;string&gt;</code></td>
+<td>Only keys supplied will be used in recursive traversal. (<code>undefined</code> =&gt; walk all paths)</td>
+</tr>
+<tr>
+<td><code>insertMarks</code></td>
+<td style="text-align:center"><code>undefined</code></td>
+<td><code>boolean</code></td>
+<td>Inserts <code>&lt;mark&gt;&lt;/mark&gt;</code> tags around matching text.</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 
