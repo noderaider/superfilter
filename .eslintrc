@@ -1,12 +1,8 @@
 {
-  "env": {
-    "shared-node-browser": true,
-    "es6": true,
-    "mocha": true
-  },
   "parser": "babel-eslint",
+  "plugins": ["babel", "react", "flowtype"],
   "parserOptions": {
-    "ecmaVersion": 7,
+    "ecmaVersion": 2017,
     "sourceType": "module",
     "ecmaFeatures": {
       "jsx": true,
@@ -20,7 +16,7 @@
       "objectLiteralShorthandMethods": true,
       "objectLiteralShorthandProperties": true,
       "templateStrings": true,
-      "experimentalObjectRestSpead": true
+      "experimentalObjectRestSpread": true
     }
   },
   "rules": {
@@ -31,22 +27,59 @@
       "allowSingleLine": true
     }],
     "comma-style": ["error", "first"],
-    "comma-spacing": ["error", { "before": false, "after": true }],
     "comma-dangle": [2, "never"],
-    "object-property-newline": ["error", { "allowMultiplePropertiesPerLine": true }],
-    "object-curly-spacing": ["error", "always"],
-    "key-spacing": ["error", { "beforeColon": false, "afterColon": true, "mode": "minimum" }],
-    "rest-spread-spacing": ["error", "never"],
-    "array-bracket-spacing": ["error", "always"],
-    "no-mixed-spaces-and-tabs": "error",
     "no-dupe-keys": 2,
     "no-ex-assign": 2,
     "no-extra-semi": 2,
     "valid-typeof": 2,
-    "generator-star-spacing": [2, {"before": false, "after": true}],
+    "no-template-curly-in-string": "error",
+    "symbol-description": "error",
+    "class-methods-use-this": "error",
+    "prefer-arrow-callback": ["error", {"allowNamedFunctions": true}],
+
+    "babel/generator-star-spacing": 1,
+    "babel/object-shorthand": 1,
+    "babel/arrow-parens": 1,
+    "babel/no-await-in-loop": 1,
+    "babel/flow-object-type": [ "error", "comma" ],
+    "babel/func-params-comma-dangle": 1,
+
     "react/jsx-uses-react": 2,
     "react/jsx-uses-vars": 2,
-    "react/react-in-jsx-scope": 2
+    "react/react-in-jsx-scope": 2,
+
+    "flowtype/define-flow-type": 1,
+    "flowtype/require-parameter-type": 1,
+    "flowtype/require-return-type": [
+      1,
+      "always",
+      {
+        "annotateUndefined": "never"
+      }
+    ],
+    "flowtype/space-after-type-colon": [
+      1,
+      "always"
+    ],
+    "flowtype/space-before-type-colon": [
+      1,
+      "never"
+    ],
+    "flowtype/type-id-match": [
+      1,
+      "^([A-Z]{1,3}[a-z0-9]+)+Type$"
+    ],
+    "flowtype/use-flow-type": 1,
+    "flowtype/valid-syntax": 1
   },
-  "plugins": ["react"]
+  "settings": {
+    "flowtype": {
+      "onlyFilesWithFlowAnnotation": true
+    }
+  },
+  "env": {
+    "es6": true,
+    "browser": true,
+    "node": true
+  }
 }
