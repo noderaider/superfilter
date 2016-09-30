@@ -63,7 +63,7 @@ export default function superfilter (json, filter, opts = {}) {
   }
   if(!contextMemo.has(filter)) {
     try {
-      contextMemo.set(filter, { filter, regex: new RegExp(filter, &apos;i&apos;) })
+      contextMemo.set(filter, { filter, regex: new RegExp(filter, &apos;ig&apos;) })
     } catch(err) {
       console.warn(`--superfilter-- ${filter} is not an regexable filter, memoizing...`)
       contextMemo.set(filter, { filter, regex: false })
@@ -95,11 +95,11 @@ export default function superfilter (json, filter, opts = {}) {
 
 function createReducer (context, opts) {
   const { filter, regex } = context
-  const { filterKeys, walkKeys } = opts
+  const { filterKeys, walkKeys, insertMarks } = opts
   return function recursiveReduce (_, data) {
     let isObjectReducer = data instanceof Array
     let [ key, value ] = isObjectReducer ? data : [ null, data ]
-    if(key &amp;&amp; !filterKeys.includes(key)) {
+    if(filterKeys &amp;&amp; key &amp;&amp; !filterKeys.includes(key)) {
       return (
         { ..._
         , [key]: value
@@ -122,11 +122,11 @@ function createReducer (context, opts) {
 
 function filterData (json, context, opts) {
   const { filter, regex } = context
-  const { filterKeys, walkKeys } = opts
+  const { filterKeys, walkKeys, insertMarks } = opts
   const jsonType = typeof json
   switch(jsonType) {
     case &apos;string&apos;:
-      return json.toLowerCase().includes(filter.toLowerCase()) ? json.replace() : undefined
+      return regex.test(json) ? (insertMarks ? json.replace(regex, &apos;&lt;mark&gt;$&amp;&lt;/mark&gt;&apos;) : json) :  undefined
     case &apos;number&apos;:
       return json.toString().includes(filter) ? json : undefined
     case &apos;object&apos;:

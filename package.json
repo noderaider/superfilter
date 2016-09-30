@@ -1,15 +1,16 @@
 {
   "name": "superfilter",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Super recursive dynamic filter function with 0 dependencies.",
   "main": "lib/superfilter.js",
   "scripts": {
-    "start": "babel src/lib -d lib --watch",
+    "start": "babel src/lib -d lib --watch --ignore __tests__",
     "prebuild": "rimraf build",
     "build": "babel src/lib -d lib --ignore __tests__",
     "predoc": "rimraf doc",
     "doc": "esdoc -c ./esdoc.json",
     "test": "jest",
+    "coverage": "jest --coverage",
     "prerelease": "npm run build",
     "release": "npm version patch && npm publish",
     "postrelease": "npm run release-doc",

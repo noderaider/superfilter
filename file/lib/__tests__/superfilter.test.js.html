@@ -42,6 +42,21 @@
 
 describe(&apos;superfilter&apos;, () =&gt; {
   it(&apos;is a function&apos;, () =&gt; { expect(typeof superfilter).toBe(&apos;function&apos;) })
+
+  const jsonTest = (desc, json, filter, opts, expected) =&gt; {
+    const _desc = `${desc} | filter:${filter} | json:${JSON.stringify(json)} | opts:${JSON.stringify(opts)} | expected:${JSON.stringify(expected)}`
+    it(_desc, () =&gt; {
+      const result = superfilter(json, filter, opts)
+      expect(result).toEqual(expected)
+    })
+  }
+
+  jsonTest(&apos;filters on key&apos;, { foo: &apos;bar&apos; }, &apos;foo&apos;, {}, { foo: &apos;bar&apos;})
+  jsonTest(&apos;filters on value&apos;, { foo: &apos;bar&apos; }, &apos;bar&apos;, {}, { foo: &apos;bar&apos;})
+  jsonTest(&apos;filters only correct key&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;foo&apos;, {}, { foo: &apos;bar&apos;})
+  jsonTest(&apos;filters only correct value&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;bra&apos;, {}, { fu: &apos;bra&apos;})
+
+  jsonTest(&apos;highlights&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;br&apos;, { insertMarks: true }, { fu: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos;})
 })
 </code></pre>
 
