@@ -58,6 +58,6 @@ The third parameter an options object to tweak how you filter:
 
 optionName    | type                          | description
 ------------- |:-----------------------------:| -----------
-`filterKeys`  | `undefined` | `Array<string>` | Only keys supplied will be used in filtering values. (`undefined` => filter on all keys)
-`walkKeys`    | `undefined` | `Array<string>` | Only keys supplied will be used in recursive traversal. (`undefined` => walk all paths)
-`insertMarks` | `undefined` | `boolean`       | Inserts `<mark></mark>` tags around matching text.
+`filterKeys`  | `undefined`, `Array<string>` | Only keys supplied will be used in filtering values. (`undefined` => filter on all keys)
+`walkKeys`    | `undefined`, `Array<string>` | Only keys supplied will be used in recursive traversal. (`undefined` => walk all paths)
+`insertMarks` | `undefined`, `boolean`       | Inserts `<mark></mark>` tags around matching text.
