@@ -32,6 +32,7 @@
     "esdoc-es7-plugin": "latest",
     "eslint": "latest",
     "eslint-plugin-babel": "latest",
+    "eslint-plugin-flowtype": "^2.19.0",
     "eslint-plugin-react": "latest",
     "jest": "^15.1.1",
     "rimraf": "latest"
