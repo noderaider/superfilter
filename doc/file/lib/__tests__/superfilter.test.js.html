@@ -51,10 +51,55 @@ describe(&apos;superfilter&apos;, () =&gt; {
     })
   }
 
+
   jsonTest(&apos;filters on key&apos;, { foo: &apos;bar&apos; }, &apos;foo&apos;, {}, { foo: &apos;bar&apos;})
   jsonTest(&apos;filters on value&apos;, { foo: &apos;bar&apos; }, &apos;bar&apos;, {}, { foo: &apos;bar&apos;})
   jsonTest(&apos;filters only correct key&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;foo&apos;, {}, { foo: &apos;bar&apos;})
   jsonTest(&apos;filters only correct value&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;bra&apos;, {}, { fu: &apos;bra&apos;})
+
+  jsonTest( &apos;matchKeys false does not take keys into account&apos;
+          , { fu: &apos;bar&apos;, bar: &apos;fu&apos; }
+          , &apos;bar&apos;
+          , { matchKeys: false }
+          , { fu: &apos;bar&apos; }
+          )
+
+  jsonTest( &apos;walks only deep keys when specified&apos;
+          , { foo: { not: &apos;bar&apos; }, fu: { yep: &apos;bar&apos; } }
+          , &apos;bar&apos;
+          , { walkKeys: [ &apos;fu&apos; ] }
+          , { foo: { not: &apos;bar&apos; }, fu: { yep: &apos;bar&apos; } }
+          )
+
+  jsonTest( &apos;filters only on non-deep keys when specified&apos;
+          , { foo: &apos;nada&apos;, fu: { yep: &apos;bar&apos; } }
+          , &apos;nada&apos;
+          , { walkKeys: [ &apos;fu&apos; ] }
+          , { foo: &apos;nada&apos; }
+          )
+
+  jsonTest( &apos;bypasses filtering of non filterKeys when specified&apos;
+          , { foo: &apos;nada&apos;, fu: { yep: &apos;bar&apos; }, bra: &apos;foo&apos; }
+          , &apos;bar&apos;
+          , { filterKeys: [ &apos;fu&apos;, &apos;bra&apos; ] }
+          , { foo: &apos;nada&apos;, fu: { yep: &apos;bar&apos; } }
+          )
+
+  jsonTest( &apos;walks nested keys and filters on specific key&apos;
+          , [ { title: &apos;foo&apos;, children: [ { title: &apos;bar&apos; } ] }
+            , { title: &apos;bar&apos;, children: [ { title: &apos;foo&apos; } ] }
+            ]
+          , &apos;bar&apos;
+          , { matchKeys: false, walkKeys: [ &apos;children&apos; ], filterKeys: [ &apos;title&apos; ] }
+          , [ { title: &apos;foo&apos;, children: [ { title: &apos;bar&apos; } ] }
+            , { title: &apos;bar&apos; }
+            ]
+          )
+
+
+  jsonTest(&apos;does not match keys non-matching keys&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;bra&apos;, {}, { fu: &apos;bra&apos;})
+
+
 
   jsonTest(&apos;highlights&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;br&apos;, { insertMarks: true }, { fu: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos;})
 })

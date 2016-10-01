@@ -38,8 +38,7 @@
 </nav>
 
 <div class="content" data-ice="content"><h1 data-ice="title">lib/superfilter.js</h1>
-<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">
-const _emptyObject = Object.freeze({})
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">const _emptyObject = Object.freeze({})
 const _emptyArray = Object.freeze([])
 
 const contextMemo = new Map()
@@ -54,7 +53,7 @@ const resultMemo = new Map()
  * @param  {Array&lt;Object&gt;}  options                 Options for how to filter.
  * @return {function}                               A json object thats been filtered.
  */
-export default function superfilter (json, filter, opts = {}) {
+ function _superfilter (json, filter, opts = {}) {
   const uniqueKey = `${json}|${filter}`
   const memoized = resultMemo.get(uniqueKey)
   if(memoized) {
@@ -93,7 +92,104 @@ export default function superfilter (json, filter, opts = {}) {
 }
 
 
+
+export default function superfilter ( json
+                                    , filter
+                                    , { matchKeys = true
+                                      , insertMarks = false
+                                      , filterKeys
+                                      , walkKeys
+                                      } = {}
+                                    ) {
+
+  const opts = { matchKeys, insertMarks, filterKeys, walkKeys }
+  const uniqueKey = `${json}|${filter}|${JSON.stringify(opts)}`
+  const memoized = resultMemo.get(uniqueKey)
+  if(memoized) {
+    console.warn(&apos;--superfilter-- using memoized result!&apos;)
+    return memoized
+  }
+  if(!contextMemo.has(filter)) {
+    try {
+      contextMemo.set(filter, { filter, regex: new RegExp(filter, &apos;ig&apos;) })
+    } catch(err) {
+      console.warn(`--superfilter-- ${filter} is not an regexable filter, memoizing...`)
+      contextMemo.set(filter, { filter, regex: false })
+    }
+  }
+  const context = contextMemo.get(filter)
+  if(!dynamicFilterMemo.has(filter)) {
+    try {
+      const dynamicFilter = eval(filter)
+      const dynamicFilterType = typeof dynamicFilter
+      switch(dynamicFilterType) {
+        case &apos;function&apos;:
+          dynamicFilterMemo.set(filter, dynamicFilter)
+        default:
+          throw new Error(`Did not evaluate to a parseable type eval(&apos;${filter}&apos;) === typeof &apos;${dynamicFilterType}&apos;`)
+      }
+    } catch(err) {
+      console.warn(`--superfilter-- ${filter} is not an understandable dynamic filter, memoizing...`)
+      dynamicFilterMemo.set(filter, false)
+    }
+  }
+  const args = [ json, context, opts ]
+  const dynamicFilter = dynamicFilterMemo.get(filter)
+  const result = dynamicFilter ? dynamicFilter(...args) : filterData(...args)
+  resultMemo.set(uniqueKey, result)
+  return result
+}
+
+
+const isPlainObject = (value) =&gt; value !== null &amp;&amp; value !== undefined &amp;&amp; typeof value === &apos;object&apos; &amp;&amp; !Array.isArray(value)
+
 function createReducer (context, opts) {
+  const { filter, regex } = context
+  const { matchKeys, filterKeys, walkKeys, insertMarks } = opts
+  return function recursiveReduce (_, data) {
+    let isObjectReducer = data instanceof Array
+    let [ key, value ] = isObjectReducer ? data : [ null, data ]
+    const isPlainObjectValue = isPlainObject(value)
+    const mustWalk = walkKeys ? walkKeys.includes(key) : isPlainObjectValue
+    /*
+    console.warn(`
+--recursiveReduce--
+data: ${JSON.stringify(data)}
+key: ${key}
+value: ${JSON.stringify(value)}
+isPlainObjectValue: ${isPlainObjectValue}
+mustWalk: ${mustWalk}
+`)
+*/
+    if(filterKeys &amp;&amp; key &amp;&amp; !filterKeys.includes(key)) {
+      return (
+        { ..._
+        , [key]: value
+        }
+      )
+    }
+
+    const executeFilter = (target) =&gt; filterData(target, context, opts)
+    const hasKeyMatch = key ? executeFilter(key) : true
+
+
+    if(key || matchKeys || mustWalk) {
+      const filtered = executeFilter(value)
+      const _value = matchKeys &amp;&amp; hasKeyMatch ? value : filtered
+      return isObjectReducer ? (
+        { ..._
+        , [key]: _value
+        }
+      ) : (
+        [ ..._, filtered ]
+      )
+    }
+
+    return key ? { [key]: value } : [ value ]
+  }
+}
+
+function _createReducer (context, opts) {
   const { filter, regex } = context
   const { filterKeys, walkKeys, insertMarks } = opts
   return function recursiveReduce (_, data) {
@@ -120,7 +216,7 @@ function createReducer (context, opts) {
   }
 }
 
-function filterData (json, context, opts) {
+function _filterData (json, context, opts) {
   const { filter, regex } = context
   const { filterKeys, walkKeys, insertMarks } = opts
   const jsonType = typeof json
@@ -137,6 +233,35 @@ function filterData (json, context, opts) {
       if(reducee.length === 0)
         return undefined
       return reducee.reduce(createReducer(context, opts), isArray ? _emptyArray : _emptyObject)
+    case &apos;undefined&apos;:
+      return undefined
+    default:
+      console.info(`--superfilter-- unmapped data type (${jsonType}) for obj ${json}`)
+      return undefined
+  }
+}
+
+function filterData (json, context, opts) {
+  const { filter, regex } = context
+  const { matchKeys, filterKeys, walkKeys, insertMarks } = opts
+  const jsonType = typeof json
+  switch(jsonType) {
+    case &apos;string&apos;:
+      return regex.test(json) ? (insertMarks ? json.replace(regex, &apos;&lt;mark&gt;$&amp;&lt;/mark&gt;&apos;) : json) :  undefined
+    case &apos;number&apos;:
+      return json.toString().includes(filter) ? json : undefined
+    case &apos;object&apos;:
+      if(json === null)
+        return undefined
+      const isArray = json instanceof Array
+      const reducee = isArray ? json : Object.entries(json)
+      if(reducee.length === 0)
+        return undefined
+      return reducee.filter((x) =&gt; {
+        const [ key, value ] = isArray ? [ null, x ] : x
+        return true
+
+      }).reduce(createReducer(context, opts), isArray ? _emptyArray : _emptyObject)
     case &apos;undefined&apos;:
       return undefined
     default:
