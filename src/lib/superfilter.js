@@ -27,14 +27,14 @@ export default function superfilter ( json
   const uniqueKey = `${JSON.stringify(json)}|${filter}|${JSON.stringify(opts)}`
   const memoized = resultMemo.get(uniqueKey)
   if(memoized) {
-    console.warn(`--superfilter-- using memoized result for => ${uniqueKey}`)
+    //console.warn(`--superfilter-- using memoized result for => ${uniqueKey}`)
     return memoized
   }
   if(!contextMemo.has(filter)) {
     try {
       contextMemo.set(filter, { filter, regex: new RegExp(filter, 'ig') })
     } catch(err) {
-      console.warn(`--superfilter-- ${filter} is not an regexable filter, memoizing...`)
+      //console.warn(`--superfilter-- ${filter} is not an regexable filter, memoizing...`)
       contextMemo.set(filter, { filter, regex: false })
     }
   }
@@ -50,7 +50,7 @@ export default function superfilter ( json
           throw new Error(`Did not evaluate to a parseable type eval('${filter}') === typeof '${dynamicFilterType}'`)
       }
     } catch(err) {
-      console.warn(`--superfilter-- ${filter} is not an understandable dynamic filter, memoizing...`)
+      //console.warn(`--superfilter-- ${filter} is not an understandable dynamic filter, memoizing...`)
       dynamicFilterMemo.set(filter, false)
     }
   }
