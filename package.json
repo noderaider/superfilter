@@ -1,12 +1,12 @@
 {
   "name": "superfilter",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Super recursive dynamic filter function with 0 dependencies.",
   "main": "lib/superfilter.js",
   "scripts": {
-    "start": "babel src/lib -d lib --watch --ignore __tests__",
+    "start": "npm run build -- --watch",
     "prebuild": "rimraf build",
-    "build": "babel src/lib -d lib --ignore __tests__",
+    "build": "babel src/lib -d lib --ignore __tests__,__mocks",
     "predoc": "rimraf doc",
     "doc": "esdoc -c ./esdoc.json",
     "test": "jest",
@@ -34,7 +34,7 @@
     "eslint-plugin-babel": "latest",
     "eslint-plugin-flowtype": "^2.19.0",
     "eslint-plugin-react": "latest",
-    "jest": "^15.1.1",
+    "jest": "^17.0.0",
     "rimraf": "latest"
   },
   "jest": {

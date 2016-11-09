@@ -10,7 +10,7 @@
     "access": null,
     "description": null,
     "lineNumber": 1,
-    "content": "const _emptyObject = Object.freeze({})\r\nconst _emptyArray = Object.freeze([])\r\n\r\nconst contextMemo = new Map()\r\nconst dynamicFilterMemo = new Map()\r\nconst resultMemo = new Map()\r\n\r\n\r\n/**\r\n * Superfilters JSON with your search string and options\r\n * @param  {Object}         json                    A json object.\r\n * @param  {Object}         filter                  A string filter (could be a function in string format).\r\n * @param  {Array<Object>}  options                 Options for how to filter.\r\n * @return {function}                               A json object thats been filtered.\r\n */\r\n function _superfilter (json, filter, opts = {}) {\r\n  const uniqueKey = `${json}|${filter}`\r\n  const memoized = resultMemo.get(uniqueKey)\r\n  if(memoized) {\r\n    console.warn('--superfilter-- using memoized result!')\r\n    return memoized\r\n  }\r\n  if(!contextMemo.has(filter)) {\r\n    try {\r\n      contextMemo.set(filter, { filter, regex: new RegExp(filter, 'ig') })\r\n    } catch(err) {\r\n      console.warn(`--superfilter-- ${filter} is not an regexable filter, memoizing...`)\r\n      contextMemo.set(filter, { filter, regex: false })\r\n    }\r\n  }\r\n  const context = contextMemo.get(filter)\r\n  if(!dynamicFilterMemo.has(filter)) {\r\n    try {\r\n      const dynamicFilter = eval(filter)\r\n      const dynamicFilterType = typeof dynamicFilter\r\n      switch(dynamicFilterType) {\r\n        case 'function':\r\n          dynamicFilterMemo.set(filter, dynamicFilter)\r\n        default:\r\n          throw new Error(`Did not evaluate to a parseable type eval('${filter}') === typeof '${dynamicFilterType}'`)\r\n      }\r\n    } catch(err) {\r\n      console.warn(`--superfilter-- ${filter} is not an understandable dynamic filter, memoizing...`)\r\n      dynamicFilterMemo.set(filter, false)\r\n    }\r\n  }\r\n  const args = [ json, context, opts ]\r\n  const dynamicFilter = dynamicFilterMemo.get(filter)\r\n  const result = dynamicFilter ? dynamicFilter(...args) : filterData(...args)\r\n  resultMemo.set(uniqueKey, result)\r\n  return result\r\n}\r\n\r\n\r\n\r\nexport default function superfilter ( json\r\n                                    , filter\r\n                                    , { matchKeys = true\r\n                                      , insertMarks = false\r\n                                      , filterKeys\r\n                                      , walkKeys\r\n                                      } = {}\r\n                                    ) {\r\n\r\n  const opts = { matchKeys, insertMarks, filterKeys, walkKeys }\r\n  const uniqueKey = `${json}|${filter}|${JSON.stringify(opts)}`\r\n  const memoized = resultMemo.get(uniqueKey)\r\n  if(memoized) {\r\n    console.warn('--superfilter-- using memoized result!')\r\n    return memoized\r\n  }\r\n  if(!contextMemo.has(filter)) {\r\n    try {\r\n      contextMemo.set(filter, { filter, regex: new RegExp(filter, 'ig') })\r\n    } catch(err) {\r\n      console.warn(`--superfilter-- ${filter} is not an regexable filter, memoizing...`)\r\n      contextMemo.set(filter, { filter, regex: false })\r\n    }\r\n  }\r\n  const context = contextMemo.get(filter)\r\n  if(!dynamicFilterMemo.has(filter)) {\r\n    try {\r\n      const dynamicFilter = eval(filter)\r\n      const dynamicFilterType = typeof dynamicFilter\r\n      switch(dynamicFilterType) {\r\n        case 'function':\r\n          dynamicFilterMemo.set(filter, dynamicFilter)\r\n        default:\r\n          throw new Error(`Did not evaluate to a parseable type eval('${filter}') === typeof '${dynamicFilterType}'`)\r\n      }\r\n    } catch(err) {\r\n      console.warn(`--superfilter-- ${filter} is not an understandable dynamic filter, memoizing...`)\r\n      dynamicFilterMemo.set(filter, false)\r\n    }\r\n  }\r\n  const args = [ json, context, opts ]\r\n  const dynamicFilter = dynamicFilterMemo.get(filter)\r\n  const result = dynamicFilter ? dynamicFilter(...args) : filterData(...args)\r\n  resultMemo.set(uniqueKey, result)\r\n  return result\r\n}\r\n\r\n\r\nconst isPlainObject = (value) => value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)\r\n\r\nfunction createReducer (context, opts) {\r\n  const { filter, regex } = context\r\n  const { matchKeys, filterKeys, walkKeys, insertMarks } = opts\r\n  return function recursiveReduce (_, data) {\r\n    let isObjectReducer = data instanceof Array\r\n    let [ key, value ] = isObjectReducer ? data : [ null, data ]\r\n    const isPlainObjectValue = isPlainObject(value)\r\n    const mustWalk = walkKeys ? walkKeys.includes(key) : isPlainObjectValue\r\n    /*\r\n    console.warn(`\r\n--recursiveReduce--\r\ndata: ${JSON.stringify(data)}\r\nkey: ${key}\r\nvalue: ${JSON.stringify(value)}\r\nisPlainObjectValue: ${isPlainObjectValue}\r\nmustWalk: ${mustWalk}\r\n`)\r\n*/\r\n    if(filterKeys && key && !filterKeys.includes(key)) {\r\n      return (\r\n        { ..._\r\n        , [key]: value\r\n        }\r\n      )\r\n    }\r\n\r\n    const executeFilter = (target) => filterData(target, context, opts)\r\n    const hasKeyMatch = key ? executeFilter(key) : true\r\n\r\n\r\n    if(key || matchKeys || mustWalk) {\r\n      const filtered = executeFilter(value)\r\n      const _value = matchKeys && hasKeyMatch ? value : filtered\r\n      return isObjectReducer ? (\r\n        { ..._\r\n        , [key]: _value\r\n        }\r\n      ) : (\r\n        [ ..._, filtered ]\r\n      )\r\n    }\r\n\r\n    return key ? { [key]: value } : [ value ]\r\n  }\r\n}\r\n\r\nfunction _createReducer (context, opts) {\r\n  const { filter, regex } = context\r\n  const { filterKeys, walkKeys, insertMarks } = opts\r\n  return function recursiveReduce (_, data) {\r\n    let isObjectReducer = data instanceof Array\r\n    let [ key, value ] = isObjectReducer ? data : [ null, data ]\r\n    if(filterKeys && key && !filterKeys.includes(key)) {\r\n      return (\r\n        { ..._\r\n        , [key]: value\r\n        }\r\n      )\r\n    }\r\n    const hasKeyMatch = key ? filterData(key, context, opts) : false\r\n    const filtered = filterData(value, context, opts)\r\n    if(!hasKeyMatch && (filtered === undefined || filtered === _emptyObject || filtered === _emptyArray))\r\n      return _\r\n    else return isObjectReducer ? (\r\n      { ..._\r\n      , [key]: hasKeyMatch ? value : filtered\r\n      }\r\n    ) : (\r\n      [ ..._, filtered ]\r\n    )\r\n  }\r\n}\r\n\r\nfunction _filterData (json, context, opts) {\r\n  const { filter, regex } = context\r\n  const { filterKeys, walkKeys, insertMarks } = opts\r\n  const jsonType = typeof json\r\n  switch(jsonType) {\r\n    case 'string':\r\n      return regex.test(json) ? (insertMarks ? json.replace(regex, '<mark>$&</mark>') : json) :  undefined\r\n    case 'number':\r\n      return json.toString().includes(filter) ? json : undefined\r\n    case 'object':\r\n      if(json === null)\r\n        return undefined\r\n      const isArray = json instanceof Array\r\n      const reducee = isArray ? json : Object.entries(json)\r\n      if(reducee.length === 0)\r\n        return undefined\r\n      return reducee.reduce(createReducer(context, opts), isArray ? _emptyArray : _emptyObject)\r\n    case 'undefined':\r\n      return undefined\r\n    default:\r\n      console.info(`--superfilter-- unmapped data type (${jsonType}) for obj ${json}`)\r\n      return undefined\r\n  }\r\n}\r\n\r\nfunction filterData (json, context, opts) {\r\n  const { filter, regex } = context\r\n  const { matchKeys, filterKeys, walkKeys, insertMarks } = opts\r\n  const jsonType = typeof json\r\n  switch(jsonType) {\r\n    case 'string':\r\n      return regex.test(json) ? (insertMarks ? json.replace(regex, '<mark>$&</mark>') : json) :  undefined\r\n    case 'number':\r\n      return json.toString().includes(filter) ? json : undefined\r\n    case 'object':\r\n      if(json === null)\r\n        return undefined\r\n      const isArray = json instanceof Array\r\n      const reducee = isArray ? json : Object.entries(json)\r\n      if(reducee.length === 0)\r\n        return undefined\r\n      return reducee.filter((x) => {\r\n        const [ key, value ] = isArray ? [ null, x ] : x\r\n        return true\r\n\r\n      }).reduce(createReducer(context, opts), isArray ? _emptyArray : _emptyObject)\r\n    case 'undefined':\r\n      return undefined\r\n    default:\r\n      console.info(`--superfilter-- unmapped data type (${jsonType}) for obj ${json}`)\r\n      return undefined\r\n  }\r\n}\r\n\r\n"
+    "content": "const _emptyObject = Object.freeze({})\r\nconst _emptyArray = Object.freeze([])\r\n\r\nconst contextMemo = new Map()\r\nconst dynamicFilterMemo = new Map()\r\nconst resultMemo = new Map()\r\n\r\n\r\n/**\r\n * Superfilters JSON with your search string and options\r\n * @param  {Object}         json                    A json object.\r\n * @param  {Object}         filter                  A string filter (could be a function in string format).\r\n * @param  {Array<Object>}  options                 Options for how to filter.\r\n * @return {function}                               A json object thats been filtered.\r\n */\r\nexport default function superfilter ( json\r\n                                    , filter\r\n                                    , { matchKeys = true\r\n                                      , insertMarks = false\r\n                                      , filterKeys\r\n                                      , walkKeys\r\n                                      , selectedIndex\r\n                                      } = {}\r\n                                    ) {\r\n\r\n  const opts = { matchKeys, insertMarks, filterKeys, walkKeys, selectedIndex }\r\n  const uniqueKey = `${JSON.stringify(json)}|${filter}|${JSON.stringify(opts)}`\r\n  const memoized = resultMemo.get(uniqueKey)\r\n  if(memoized) {\r\n    console.warn(`--superfilter-- using memoized result for => ${uniqueKey}`)\r\n    return memoized\r\n  }\r\n  if(!contextMemo.has(filter)) {\r\n    try {\r\n      contextMemo.set(filter, { filter, regex: new RegExp(filter, 'ig') })\r\n    } catch(err) {\r\n      console.warn(`--superfilter-- ${filter} is not an regexable filter, memoizing...`)\r\n      contextMemo.set(filter, { filter, regex: false })\r\n    }\r\n  }\r\n  const context = contextMemo.get(filter)\r\n  if(!dynamicFilterMemo.has(filter)) {\r\n    try {\r\n      const dynamicFilter = eval(filter)\r\n      const dynamicFilterType = typeof dynamicFilter\r\n      switch(dynamicFilterType) {\r\n        case 'function':\r\n          dynamicFilterMemo.set(filter, dynamicFilter)\r\n        default:\r\n          throw new Error(`Did not evaluate to a parseable type eval('${filter}') === typeof '${dynamicFilterType}'`)\r\n      }\r\n    } catch(err) {\r\n      console.warn(`--superfilter-- ${filter} is not an understandable dynamic filter, memoizing...`)\r\n      dynamicFilterMemo.set(filter, false)\r\n    }\r\n  }\r\n  const mutating = { index: -1 }\r\n  const args = [ json, context, opts, mutating ]\r\n  const dynamicFilter = dynamicFilterMemo.get(filter)\r\n  const result = dynamicFilter ? dynamicFilter(...args) : filterData(...args)\r\n  resultMemo.set(uniqueKey, result)\r\n  return result\r\n}\r\n\r\n\r\nconst isPlainObject = (value) => value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)\r\n\r\nfunction createReducer (context, opts, mutating) {\r\n  const { filter, regex } = context\r\n  const { matchKeys, filterKeys, walkKeys, insertMarks } = opts\r\n  return function recursiveReduce (_, data) {\r\n    let isObjectReducer = data instanceof Array\r\n    let [ key, value ] = isObjectReducer ? data : [ null, data ]\r\n    const isPlainObjectValue = isPlainObject(value)\r\n    const mustWalk = walkKeys ? walkKeys.includes(key) : isPlainObjectValue\r\n    /*\r\n    console.warn(`\r\n--recursiveReduce--\r\ndata: ${JSON.stringify(data)}\r\nkey: ${key}\r\nvalue: ${JSON.stringify(value)}\r\nisPlainObjectValue: ${isPlainObjectValue}\r\nmustWalk: ${mustWalk}\r\n`)\r\n*/\r\n    if(filterKeys && key && !filterKeys.includes(key)) {\r\n      return (\r\n        { ..._\r\n        , [key]: value\r\n        }\r\n      )\r\n    }\r\n\r\n    const executeFilter = (target) => filterData(target, context, opts, mutating)\r\n    //const hasKeyMatch = key ? executeFilter(key) : true\r\n\r\n\r\n    if(key || matchKeys || mustWalk) {\r\n      const filtered = executeFilter(value)\r\n      const _value = filtered //matchKeys && hasKeyMatch ? value : filtered\r\n      if(isObjectReducer) {\r\n        if(_value === undefined)\r\n          return _\r\n        return { ..._, [key]: _value }\r\n      }\r\n      if(filtered === undefined)\r\n        return _\r\n      return [ ..._, filtered ]\r\n    }\r\n\r\n    return key ? { [key]: value } : [ value ]\r\n  }\r\n}\r\n\r\n\r\nfunction filterData (json, context, opts, mutating) {\r\n  const { filter, regex } = context\r\n  const { matchKeys, filterKeys, walkKeys, insertMarks, selectedIndex } = opts\r\n  const jsonType = typeof json\r\n  switch(jsonType) {\r\n    case 'string':\r\n      if(!regex.test(json))\r\n        return undefined\r\n      mutating.index++\r\n      const match = (insertMarks ? json.replace(regex, '<mark>$&</mark>') : json)\r\n      if(selectedIndex === mutating.index)\r\n        return `<div class=\"selected\">${match}</div>`\r\n      return match\r\n      //return `<div class=\"selected-${mutating.index}\">${match}</div>`\r\n    case 'number':\r\n      if(!json.toString().includes(filter))\r\n        return undefined\r\n      mutating.index++\r\n      return json\r\n    case 'object':\r\n      if(json === null)\r\n        return undefined\r\n      const isArray = json instanceof Array\r\n      const reducee = isArray ? json : Object.entries(json)\r\n      if(reducee.length === 0)\r\n        return undefined\r\n      return reducee.filter((x) => {\r\n        const [ key, value ] = isArray ? [ null, x ] : x\r\n        if(value === undefined)\r\n          return false\r\n        return true\r\n\r\n      }).reduce(createReducer(context, opts, mutating), isArray ? _emptyArray : _emptyObject)\r\n    case 'undefined':\r\n      return undefined\r\n    default:\r\n      console.info(`--superfilter-- unmapped data type (${jsonType}) for obj ${json}`)\r\n      return undefined\r\n  }\r\n}\r\n\r\n"
   },
   {
     "__docId__": 1,
@@ -122,13 +122,13 @@
     "kind": "function",
     "static": true,
     "variation": null,
-    "name": "_superfilter",
+    "name": "superfilter",
     "memberof": "lib/superfilter.js",
-    "longname": "lib/superfilter.js~_superfilter",
+    "longname": "lib/superfilter.js~superfilter",
     "access": null,
-    "export": false,
+    "export": true,
     "importPath": "superfilter",
-    "importStyle": null,
+    "importStyle": "superfilter",
     "description": "Superfilters JSON with your search string and options",
     "lineNumber": 16,
     "params": [
@@ -175,51 +175,6 @@
   },
   {
     "__docId__": 7,
-    "kind": "function",
-    "static": true,
-    "variation": null,
-    "name": "superfilter",
-    "memberof": "lib/superfilter.js",
-    "longname": "lib/superfilter.js~superfilter",
-    "access": null,
-    "export": true,
-    "importPath": "superfilter",
-    "importStyle": "superfilter",
-    "description": null,
-    "lineNumber": 56,
-    "undocument": true,
-    "params": [
-      {
-        "name": "json",
-        "types": [
-          "*"
-        ]
-      },
-      {
-        "name": "filter",
-        "types": [
-          "*"
-        ]
-      },
-      {
-        "name": "objectPattern2",
-        "optional": true,
-        "types": [
-          "{\"matchKeys\": *, \"insertMarks\": *, \"filterKeys\": *, \"walkKeys\": *}"
-        ],
-        "defaultRaw": {},
-        "defaultValue": "{}"
-      }
-    ],
-    "return": {
-      "types": [
-        "*"
-      ]
-    },
-    "generator": false
-  },
-  {
-    "__docId__": 8,
     "kind": "variable",
     "static": true,
     "variation": null,
@@ -231,7 +186,7 @@
     "importPath": "superfilter",
     "importStyle": null,
     "description": null,
-    "lineNumber": 104,
+    "lineNumber": 66,
     "undocument": true,
     "type": {
       "types": [
@@ -240,7 +195,7 @@
     }
   },
   {
-    "__docId__": 9,
+    "__docId__": 8,
     "kind": "function",
     "static": true,
     "variation": null,
@@ -252,7 +207,7 @@
     "importPath": "superfilter",
     "importStyle": null,
     "description": null,
-    "lineNumber": 106,
+    "lineNumber": 68,
     "undocument": true,
     "params": [
       {
@@ -263,6 +218,60 @@
       },
       {
         "name": "opts",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "mutating",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 9,
+    "kind": "function",
+    "static": true,
+    "variation": null,
+    "name": "filterData",
+    "memberof": "lib/superfilter.js",
+    "longname": "lib/superfilter.js~filterData",
+    "access": null,
+    "export": false,
+    "importPath": "superfilter",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 116,
+    "undocument": true,
+    "params": [
+      {
+        "name": "json",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "context",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "opts",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "mutating",
         "types": [
           "*"
         ]
@@ -277,126 +286,6 @@
   },
   {
     "__docId__": 10,
-    "kind": "function",
-    "static": true,
-    "variation": null,
-    "name": "_createReducer",
-    "memberof": "lib/superfilter.js",
-    "longname": "lib/superfilter.js~_createReducer",
-    "access": null,
-    "export": false,
-    "importPath": "superfilter",
-    "importStyle": null,
-    "description": null,
-    "lineNumber": 152,
-    "undocument": true,
-    "params": [
-      {
-        "name": "context",
-        "types": [
-          "*"
-        ]
-      },
-      {
-        "name": "opts",
-        "types": [
-          "*"
-        ]
-      }
-    ],
-    "return": {
-      "types": [
-        "*"
-      ]
-    },
-    "generator": false
-  },
-  {
-    "__docId__": 11,
-    "kind": "function",
-    "static": true,
-    "variation": null,
-    "name": "_filterData",
-    "memberof": "lib/superfilter.js",
-    "longname": "lib/superfilter.js~_filterData",
-    "access": null,
-    "export": false,
-    "importPath": "superfilter",
-    "importStyle": null,
-    "description": null,
-    "lineNumber": 179,
-    "undocument": true,
-    "params": [
-      {
-        "name": "json",
-        "types": [
-          "*"
-        ]
-      },
-      {
-        "name": "context",
-        "types": [
-          "*"
-        ]
-      },
-      {
-        "name": "opts",
-        "types": [
-          "*"
-        ]
-      }
-    ],
-    "return": {
-      "types": [
-        "*"
-      ]
-    },
-    "generator": false
-  },
-  {
-    "__docId__": 12,
-    "kind": "function",
-    "static": true,
-    "variation": null,
-    "name": "filterData",
-    "memberof": "lib/superfilter.js",
-    "longname": "lib/superfilter.js~filterData",
-    "access": null,
-    "export": false,
-    "importPath": "superfilter",
-    "importStyle": null,
-    "description": null,
-    "lineNumber": 204,
-    "undocument": true,
-    "params": [
-      {
-        "name": "json",
-        "types": [
-          "*"
-        ]
-      },
-      {
-        "name": "context",
-        "types": [
-          "*"
-        ]
-      },
-      {
-        "name": "opts",
-        "types": [
-          "*"
-        ]
-      }
-    ],
-    "return": {
-      "types": [
-        "*"
-      ]
-    },
-    "generator": false
-  },
-  {
-    "__docId__": 13,
     "kind": "file",
     "static": true,
     "variation": null,
@@ -406,10 +295,10 @@
     "access": null,
     "description": null,
     "lineNumber": 1,
-    "content": "import superfilter from '../superfilter'\r\n\r\ndescribe('superfilter', () => {\r\n  it('is a function', () => { expect(typeof superfilter).toBe('function') })\r\n\r\n  const jsonTest = (desc, json, filter, opts, expected) => {\r\n    const _desc = `${desc} | filter:${filter} | json:${JSON.stringify(json)} | opts:${JSON.stringify(opts)} | expected:${JSON.stringify(expected)}`\r\n    it(_desc, () => {\r\n      const result = superfilter(json, filter, opts)\r\n      expect(result).toEqual(expected)\r\n    })\r\n  }\r\n\r\n\r\n  jsonTest('filters on key', { foo: 'bar' }, 'foo', {}, { foo: 'bar'})\r\n  jsonTest('filters on value', { foo: 'bar' }, 'bar', {}, { foo: 'bar'})\r\n  jsonTest('filters only correct key', { foo: 'bar', fu: 'bra' }, 'foo', {}, { foo: 'bar'})\r\n  jsonTest('filters only correct value', { foo: 'bar', fu: 'bra' }, 'bra', {}, { fu: 'bra'})\r\n\r\n  jsonTest( 'matchKeys false does not take keys into account'\r\n          , { fu: 'bar', bar: 'fu' }\r\n          , 'bar'\r\n          , { matchKeys: false }\r\n          , { fu: 'bar' }\r\n          )\r\n\r\n  jsonTest( 'walks only deep keys when specified'\r\n          , { foo: { not: 'bar' }, fu: { yep: 'bar' } }\r\n          , 'bar'\r\n          , { walkKeys: [ 'fu' ] }\r\n          , { foo: { not: 'bar' }, fu: { yep: 'bar' } }\r\n          )\r\n\r\n  jsonTest( 'filters only on non-deep keys when specified'\r\n          , { foo: 'nada', fu: { yep: 'bar' } }\r\n          , 'nada'\r\n          , { walkKeys: [ 'fu' ] }\r\n          , { foo: 'nada' }\r\n          )\r\n\r\n  jsonTest( 'bypasses filtering of non filterKeys when specified'\r\n          , { foo: 'nada', fu: { yep: 'bar' }, bra: 'foo' }\r\n          , 'bar'\r\n          , { filterKeys: [ 'fu', 'bra' ] }\r\n          , { foo: 'nada', fu: { yep: 'bar' } }\r\n          )\r\n\r\n  jsonTest( 'walks nested keys and filters on specific key'\r\n          , [ { title: 'foo', children: [ { title: 'bar' } ] }\r\n            , { title: 'bar', children: [ { title: 'foo' } ] }\r\n            ]\r\n          , 'bar'\r\n          , { matchKeys: false, walkKeys: [ 'children' ], filterKeys: [ 'title' ] }\r\n          , [ { title: 'foo', children: [ { title: 'bar' } ] }\r\n            , { title: 'bar' }\r\n            ]\r\n          )\r\n\r\n\r\n  jsonTest('does not match keys non-matching keys', { foo: 'bar', fu: 'bra' }, 'bra', {}, { fu: 'bra'})\r\n\r\n\r\n\r\n  jsonTest('highlights', { foo: 'bar', fu: 'bra' }, 'br', { insertMarks: true }, { fu: '<mark>br</mark>a'})\r\n})\r\n"
+    "content": "import superfilter from '../superfilter'\r\n\r\ndescribe('superfilter', () => {\r\n  const jsonTest = (desc, json, filter, opts, expected) => {\r\n    const _desc = `${desc} | filter:${filter} | json:${JSON.stringify(json)} | opts:${JSON.stringify(opts)} | expected:${JSON.stringify(expected)}`\r\n    it(_desc, () => {\r\n      const result = superfilter(json, filter, opts)\r\n      expect(result).toEqual(expected)\r\n    })\r\n  }\r\n\r\n  jsonTest('filters on value', { foo: 'bar' }, 'bar', {}, { foo: 'bar'})\r\n  jsonTest('filters only correct value', { foo: 'bar', fu: 'bra' }, 'bra', {}, { fu: 'bra'})\r\n\r\n\r\n  jsonTest( 'bypasses filtering of non filterKeys when specified'\r\n          , { foo: 'nada', fu: { yep: 'bar' }, bra: 'foo' }\r\n          , 'bar'\r\n          , { filterKeys: [ 'fu', 'bra' ] }\r\n          , { foo: 'nada', fu: { yep: 'bar' } }\r\n          )\r\n\r\n  jsonTest('does not match keys non-matching keys', { foo: 'bar', fu: 'bra' }, 'bra', {}, { fu: 'bra'})\r\n  jsonTest('highlights', { foo: 'bar', fu: 'bra' }, 'br', { insertMarks: true }, { fu: '<mark>br</mark>a'})\r\n  jsonTest('selects', { foo: 'bar', fu: 'bra', ju: 'bra', du: 'bra', su: 'bra' }, 'br', { insertMarks: true, selectedIndex: 2 }, { fu: '<mark>br</mark>a', ju: '<mark>br</mark>a', du: '<div class=\"selected\"><mark>br</mark>a</div>', su: '<mark>br</mark>a' })\r\n  jsonTest('selects only leafs', { fu: 'foo', br: { foo: 'bar', fu: 'bra', ju: 'bra', du: 'bra', su: 'bra' } }, 'br', { insertMarks: true, selectedIndex: 2 }, { br: { fu: '<mark>br</mark>a', ju: '<mark>br</mark>a', du: '<div class=\"selected\"><mark>br</mark>a</div>', su: '<mark>br</mark>a' } })\r\n})\r\n"
   },
   {
-    "__docId__": 15,
+    "__docId__": 12,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -422,7 +311,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 16,
+    "__docId__": 13,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -435,7 +324,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 17,
+    "__docId__": 14,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -448,7 +337,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 18,
+    "__docId__": 15,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -461,7 +350,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 19,
+    "__docId__": 16,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -474,7 +363,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 20,
+    "__docId__": 17,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -487,7 +376,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 21,
+    "__docId__": 18,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -500,7 +389,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 22,
+    "__docId__": 19,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -513,7 +402,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 23,
+    "__docId__": 20,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -526,7 +415,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 24,
+    "__docId__": 21,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -539,7 +428,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 25,
+    "__docId__": 22,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -552,7 +441,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 26,
+    "__docId__": 23,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -565,7 +454,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 27,
+    "__docId__": 24,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -578,7 +467,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 28,
+    "__docId__": 25,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -591,7 +480,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 29,
+    "__docId__": 26,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -604,7 +493,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 30,
+    "__docId__": 27,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -617,7 +506,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 31,
+    "__docId__": 28,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -630,7 +519,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 32,
+    "__docId__": 29,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -643,7 +532,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 33,
+    "__docId__": 30,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -656,7 +545,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 34,
+    "__docId__": 31,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -669,7 +558,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 35,
+    "__docId__": 32,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -682,7 +571,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 36,
+    "__docId__": 33,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -695,7 +584,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 37,
+    "__docId__": 34,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -708,7 +597,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 38,
+    "__docId__": 35,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -721,7 +610,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 39,
+    "__docId__": 36,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -734,7 +623,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 40,
+    "__docId__": 37,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -747,7 +636,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 41,
+    "__docId__": 38,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -760,7 +649,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 42,
+    "__docId__": 39,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -773,7 +662,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 43,
+    "__docId__": 40,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -786,7 +675,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 44,
+    "__docId__": 41,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -799,7 +688,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 45,
+    "__docId__": 42,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -812,7 +701,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 46,
+    "__docId__": 43,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -825,7 +714,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 47,
+    "__docId__": 44,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -838,7 +727,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 48,
+    "__docId__": 45,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -851,7 +740,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 49,
+    "__docId__": 46,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -864,7 +753,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 50,
+    "__docId__": 47,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -877,7 +766,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 51,
+    "__docId__": 48,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -890,7 +779,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 52,
+    "__docId__": 49,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -903,7 +792,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 53,
+    "__docId__": 50,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -916,7 +805,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 54,
+    "__docId__": 51,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -929,7 +818,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 55,
+    "__docId__": 52,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -942,7 +831,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 56,
+    "__docId__": 53,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -955,7 +844,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 57,
+    "__docId__": 54,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -968,7 +857,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 58,
+    "__docId__": 55,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -981,7 +870,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 59,
+    "__docId__": 56,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -994,7 +883,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 60,
+    "__docId__": 57,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1007,7 +896,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 61,
+    "__docId__": 58,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1020,7 +909,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 63,
+    "__docId__": 60,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1033,7 +922,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 64,
+    "__docId__": 61,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1046,7 +935,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 65,
+    "__docId__": 62,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1059,7 +948,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 66,
+    "__docId__": 63,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1072,7 +961,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 67,
+    "__docId__": 64,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1085,7 +974,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 68,
+    "__docId__": 65,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1098,7 +987,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 69,
+    "__docId__": 66,
     "kind": "external",
     "static": true,
     "variation": null,
@@ -1111,7 +1000,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 70,
+    "__docId__": 67,
     "kind": "external",
     "static": true,
     "variation": null,

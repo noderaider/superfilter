@@ -1,14 +1,12 @@
 {
-  "coverage": "0%",
+  "coverage": "100%",
   "expectCount": 1,
-  "actualCount": 0,
+  "actualCount": 1,
   "files": {
     "lib/superfilter.js": {
       "expectCount": 1,
-      "actualCount": 0,
-      "undocumentLines": [
-        56
-      ]
+      "actualCount": 1,
+      "undocumentLines": []
     }
   }
 }

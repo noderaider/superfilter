@@ -41,8 +41,6 @@
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import superfilter from &apos;../superfilter&apos;
 
 describe(&apos;superfilter&apos;, () =&gt; {
-  it(&apos;is a function&apos;, () =&gt; { expect(typeof superfilter).toBe(&apos;function&apos;) })
-
   const jsonTest = (desc, json, filter, opts, expected) =&gt; {
     const _desc = `${desc} | filter:${filter} | json:${JSON.stringify(json)} | opts:${JSON.stringify(opts)} | expected:${JSON.stringify(expected)}`
     it(_desc, () =&gt; {
@@ -51,32 +49,9 @@ describe(&apos;superfilter&apos;, () =&gt; {
     })
   }
 
-
-  jsonTest(&apos;filters on key&apos;, { foo: &apos;bar&apos; }, &apos;foo&apos;, {}, { foo: &apos;bar&apos;})
   jsonTest(&apos;filters on value&apos;, { foo: &apos;bar&apos; }, &apos;bar&apos;, {}, { foo: &apos;bar&apos;})
-  jsonTest(&apos;filters only correct key&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;foo&apos;, {}, { foo: &apos;bar&apos;})
   jsonTest(&apos;filters only correct value&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;bra&apos;, {}, { fu: &apos;bra&apos;})
 
-  jsonTest( &apos;matchKeys false does not take keys into account&apos;
-          , { fu: &apos;bar&apos;, bar: &apos;fu&apos; }
-          , &apos;bar&apos;
-          , { matchKeys: false }
-          , { fu: &apos;bar&apos; }
-          )
-
-  jsonTest( &apos;walks only deep keys when specified&apos;
-          , { foo: { not: &apos;bar&apos; }, fu: { yep: &apos;bar&apos; } }
-          , &apos;bar&apos;
-          , { walkKeys: [ &apos;fu&apos; ] }
-          , { foo: { not: &apos;bar&apos; }, fu: { yep: &apos;bar&apos; } }
-          )
-
-  jsonTest( &apos;filters only on non-deep keys when specified&apos;
-          , { foo: &apos;nada&apos;, fu: { yep: &apos;bar&apos; } }
-          , &apos;nada&apos;
-          , { walkKeys: [ &apos;fu&apos; ] }
-          , { foo: &apos;nada&apos; }
-          )
 
   jsonTest( &apos;bypasses filtering of non filterKeys when specified&apos;
           , { foo: &apos;nada&apos;, fu: { yep: &apos;bar&apos; }, bra: &apos;foo&apos; }
@@ -85,23 +60,10 @@ describe(&apos;superfilter&apos;, () =&gt; {
           , { foo: &apos;nada&apos;, fu: { yep: &apos;bar&apos; } }
           )
 
-  jsonTest( &apos;walks nested keys and filters on specific key&apos;
-          , [ { title: &apos;foo&apos;, children: [ { title: &apos;bar&apos; } ] }
-            , { title: &apos;bar&apos;, children: [ { title: &apos;foo&apos; } ] }
-            ]
-          , &apos;bar&apos;
-          , { matchKeys: false, walkKeys: [ &apos;children&apos; ], filterKeys: [ &apos;title&apos; ] }
-          , [ { title: &apos;foo&apos;, children: [ { title: &apos;bar&apos; } ] }
-            , { title: &apos;bar&apos; }
-            ]
-          )
-
-
   jsonTest(&apos;does not match keys non-matching keys&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;bra&apos;, {}, { fu: &apos;bra&apos;})
-
-
-
   jsonTest(&apos;highlights&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos; }, &apos;br&apos;, { insertMarks: true }, { fu: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos;})
+  jsonTest(&apos;selects&apos;, { foo: &apos;bar&apos;, fu: &apos;bra&apos;, ju: &apos;bra&apos;, du: &apos;bra&apos;, su: &apos;bra&apos; }, &apos;br&apos;, { insertMarks: true, selectedIndex: 2 }, { fu: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos;, ju: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos;, du: &apos;&lt;div class=&quot;selected&quot;&gt;&lt;mark&gt;br&lt;/mark&gt;a&lt;/div&gt;&apos;, su: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos; })
+  jsonTest(&apos;selects only leafs&apos;, { fu: &apos;foo&apos;, br: { foo: &apos;bar&apos;, fu: &apos;bra&apos;, ju: &apos;bra&apos;, du: &apos;bra&apos;, su: &apos;bra&apos; } }, &apos;br&apos;, { insertMarks: true, selectedIndex: 2 }, { br: { fu: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos;, ju: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos;, du: &apos;&lt;div class=&quot;selected&quot;&gt;&lt;mark&gt;br&lt;/mark&gt;a&lt;/div&gt;&apos;, su: &apos;&lt;mark&gt;br&lt;/mark&gt;a&apos; } })
 })
 </code></pre>
 
